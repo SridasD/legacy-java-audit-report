@@ -161,10 +161,20 @@ export default function Home() {
                 <Section title="Developer action">
                   <p>{finding.action}</p>
                 </Section>
+                <Section title="Implementation steps">
+                  <ol className="fix-steps">
+                    {finding.fixSteps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </Section>
                 <Section title="Suggested fix pattern">
                   <pre>
                     <code>{finding.pattern}</code>
                   </pre>
+                </Section>
+                <Section title="Why this fix is safe">
+                  <p>{finding.whySafe}</p>
                 </Section>
                 <div className="two-column">
                   <Section title="Do not change">
