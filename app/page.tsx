@@ -2,7 +2,13 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { auditSummary, findings, securityConcerns, type Severity } from "@/data/findings";
+import {
+  auditSummary,
+  dynamicSqlCandidates,
+  findings,
+  securityConcerns,
+  type Severity,
+} from "@/data/findings";
 
 const severityOrder: Record<Severity, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
@@ -318,6 +324,36 @@ export default function Home() {
             </details>
           ))}
         </div>
+        <section className="candidate-inventory" aria-labelledby="dynamic-sql-title">
+          <div className="candidate-intro">
+            <div>
+              <p className="section-kicker">Screening inventory</p>
+              <h3 id="dynamic-sql-title">Potential dynamic SQL construction</h3>
+            </div>
+            <strong>{dynamicSqlCandidates.length} files</strong>
+          </div>
+          <p className="candidate-note">
+            These are broad static-pattern matches requiring manual review—not confirmed vulnerabilities. The
+            line shown is the first match in each file; matches may include fixed-string assembly or commented
+            code.
+          </p>
+          <div className="candidate-table" role="table" aria-label="Dynamic SQL screening candidates">
+            <div className="candidate-row candidate-header" role="row">
+              <span role="columnheader">File path</span>
+              <span role="columnheader">First matched line</span>
+              <span role="columnheader">Status</span>
+            </div>
+            {dynamicSqlCandidates.map((candidate) => (
+              <div className="candidate-row" role="row" key={candidate.file}>
+                <code role="cell">{candidate.file}</code>
+                <span role="cell">{candidate.line}</span>
+                <span role="cell" className="review-status">
+                  Needs manual review
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
       </section>
 
       <footer>
