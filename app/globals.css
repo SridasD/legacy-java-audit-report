@@ -66,6 +66,15 @@ h1 {
   padding: 16px 0 4px;
   border-top: 3px solid var(--green);
 }
+.masthead-brand {
+  width: min(320px, 30vw);
+}
+.cmmi-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 18px;
+}
 .audit-stamp span,
 label span,
 .metadata span {
@@ -455,6 +464,13 @@ footer {
   }
   .audit-stamp {
     margin-top: 30px;
+  }
+  .masthead-brand {
+    width: min(360px, 100%);
+    margin-top: 28px;
+  }
+  .masthead-brand .audit-stamp {
+    margin-top: 0;
   }
   .metrics {
     grid-template-columns: repeat(2, 1fr);

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { auditSummary, findings, securityConcerns, type Severity } from "@/data/findings";
 
@@ -36,9 +37,19 @@ export default function Home() {
             resource handling.
           </p>
         </div>
-        <div className="audit-stamp">
-          <span>Audit date</span>
-          <strong>{auditSummary.auditDate}</strong>
+        <div className="masthead-brand">
+          <Image
+            className="cmmi-logo"
+            src="/cdipd-cmmi-logo.png"
+            alt="CMMI ML3 Appraised, Digital University Kerala and CDIPD"
+            width={384}
+            height={256}
+            priority
+          />
+          <div className="audit-stamp">
+            <span>Audit date</span>
+            <strong>{auditSummary.auditDate}</strong>
+          </div>
         </div>
       </header>
 
@@ -281,6 +292,11 @@ export default function Home() {
                 </Section>
                 <Section title="Developer action">
                   <p>{concern.action}</p>
+                </Section>
+                <Section title="Suggested fix pattern">
+                  <pre>
+                    <code>{concern.pattern}</code>
+                  </pre>
                 </Section>
                 <div className="two-column">
                   <Section title="Do not change">

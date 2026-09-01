@@ -659,6 +659,7 @@ export type SecurityConcern = {
   flow: string[];
   reason: string;
   action: string;
+  pattern: string;
   preserve: string[];
   verify: string[];
 };
@@ -697,6 +698,53 @@ export const securityConcerns: SecurityConcern[] = [
       "LIMIT and OFFSET are parameterized, but the four search conditions are not. A caller can send an HTTP request directly, so validation or escaping in the browser cannot protect the database query.",
     action:
       "Build both queries from fixed SQL text. Bind the username, email, mobile number, and application-number search patterns with PreparedStatement.setString(...), followed by the existing LIMIT and OFFSET parameters in the listing query.",
+    pattern: `boolean hasSearch = search != null && !search.isBlank();
+String filter = hasSearch
+    ? " AND (lower(ud.user_name) LIKE ? OR lower(email_id) LIKE ? "
+        + "OR mobile_no LIKE ? OR application_no LIKE ?)"
+    : "";
+
+String searchPattern = hasSearch
+    ? search.toLowerCase(Locale.ROOT) + "%"
+    : null;
+String count = "0"; // Preserve the existing response type.
+
+String countQuery = COUNT_QUERY_BASE + filter;
+try (PreparedStatement countStmt = conn.prepareStatement(countQuery)) {
+    if (hasSearch) {
+        countStmt.setString(1, searchPattern);
+        countStmt.setString(2, searchPattern);
+        countStmt.setString(3, searchPattern);
+        countStmt.setString(4, searchPattern);
+    }
+    try (ResultSet countRs = countStmt.executeQuery()) {
+        if (countRs.next()) {
+            count = countRs.getString("count");
+        }
+    }
+}
+
+if ("-1".equals(length)) {
+    length = count;
+}
+
+String dataQuery = DATA_QUERY_BASE + filter
+    + " ORDER BY user_name LIMIT ? OFFSET ?";
+try (PreparedStatement listStmt = conn.prepareStatement(dataQuery)) {
+    int parameter = 1;
+    if (hasSearch) {
+        listStmt.setString(parameter++, searchPattern);
+        listStmt.setString(parameter++, searchPattern);
+        listStmt.setString(parameter++, searchPattern);
+        listStmt.setString(parameter++, searchPattern);
+    }
+    listStmt.setInt(parameter++, Integer.parseInt(length));
+    listStmt.setInt(parameter, Integer.parseInt(offSet));
+
+    try (ResultSet listRs = listStmt.executeQuery()) {
+        // Preserve the existing applicant JSON-building loop.
+    }
+}`,
     preserve: [
       "The same four searchable fields",
       "Case-insensitive prefix matching",
