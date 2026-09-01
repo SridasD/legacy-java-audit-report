@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { auditSummary, findings, type Severity } from "@/data/findings";
+import { auditSummary, findings, securityConcerns, type Severity } from "@/data/findings";
 
 const severityOrder: Record<Severity, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
@@ -176,49 +176,6 @@ export default function Home() {
                 <Section title="Why this fix is safe">
                   <p>{finding.whySafe}</p>
                 </Section>
-                {finding.securityConcern && (
-                  <aside className="security-concern">
-                    <div className="concern-heading">
-                      <div>
-                        <p className="section-kicker">Separate security concern</p>
-                        <h3>Unparameterized search conditions</h3>
-                      </div>
-                      <span className={`badge ${finding.securityConcern.severity.toLowerCase()}`}>
-                        {finding.securityConcern.severity}
-                      </span>
-                    </div>
-                    <Section title="Problem">
-                      <p>{finding.securityConcern.problem}</p>
-                    </Section>
-                    <Section title="Code evidence">
-                      <pre>
-                        <code>{finding.securityConcern.evidence}</code>
-                      </pre>
-                    </Section>
-                    <Section title="Why this is a security concern">
-                      <p>{finding.securityConcern.reason}</p>
-                    </Section>
-                    <Section title="Developer action">
-                      <p>{finding.securityConcern.action}</p>
-                    </Section>
-                    <div className="two-column">
-                      <Section title="Do not change">
-                        <ul>
-                          {finding.securityConcern.preserve.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </Section>
-                      <Section title="Security verification">
-                        <ul className="checklist">
-                          {finding.securityConcern.verify.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </Section>
-                    </div>
-                  </aside>
-                )}
                 {finding.bestPractices && (
                   <Section title="Best practices and reasons">
                     <div className="practice-list">
@@ -259,6 +216,91 @@ export default function Home() {
               <p>Clear the filters or try a broader search.</p>
             </div>
           )}
+        </div>
+      </section>
+
+      <section aria-labelledby="security-title" className="security-section">
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">Separate review area</p>
+            <h2 id="security-title">Security concerns</h2>
+          </div>
+          <p>
+            Security observations discovered during the lifecycle audit. This is separate from the 17
+            confirmed resource findings and is not a complete security audit of all 790 files.
+          </p>
+        </div>
+        <div className="security-list">
+          {securityConcerns.map((concern) => (
+            <details className="security-concern" key={concern.id} open>
+              <summary>
+                <span className={`badge ${concern.severity.toLowerCase()}`}>{concern.severity}</span>
+                <span className="finding-number">{concern.id}</span>
+                <span className="finding-title">
+                  <strong>{concern.title}</strong>
+                  <small>{concern.category}</small>
+                </span>
+                <span className="chevron">＋</span>
+              </summary>
+              <div className="security-body">
+                <div className="metadata security-metadata">
+                  <Meta label="Category" value={concern.category} />
+                  <Meta label="Files involved" value={String(concern.locations.length)} />
+                  <Meta label="Confidence" value={concern.confidence} />
+                </div>
+                <Section title="Affected files and lines">
+                  <div className="location-list">
+                    {concern.locations.map((location) => (
+                      <article key={`${location.file}:${location.line}`}>
+                        <code>
+                          {location.file}:{location.line}
+                        </code>
+                        <strong>{location.method}</strong>
+                        <p>{location.role}</p>
+                      </article>
+                    ))}
+                  </div>
+                </Section>
+                <Section title="Problem">
+                  <p>{concern.problem}</p>
+                </Section>
+                <Section title="Code evidence">
+                  <pre>
+                    <code>{concern.evidence}</code>
+                  </pre>
+                </Section>
+                <Section title="Input-to-database flow">
+                  <ol className="fix-steps">
+                    {concern.flow.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </Section>
+                <Section title="Why this is a security concern">
+                  <p>{concern.reason}</p>
+                </Section>
+                <Section title="Developer action">
+                  <p>{concern.action}</p>
+                </Section>
+                <div className="two-column">
+                  <Section title="Do not change">
+                    <ul>
+                      {concern.preserve.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </Section>
+                  <Section title="Security verification">
+                    <ul className="checklist">
+                      {concern.verify.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </Section>
+                </div>
+              </div>
+            </details>
+          ))}
         </div>
       </section>
 

@@ -17,15 +17,6 @@ export type Finding = {
   fixSteps: string[];
   pattern: string;
   whySafe: string;
-  securityConcern?: {
-    severity: Severity;
-    problem: string;
-    evidence: string;
-    reason: string;
-    action: string;
-    preserve: string[];
-    verify: string[];
-  };
   bestPractices?: Array<{
     tip: string;
     reason: string;
@@ -389,7 +380,7 @@ const baseFindings: Omit<Finding, "fixSteps" | "whySafe">[] = [
 ];
 
 type FixExplanation = Pick<Finding, "action" | "fixSteps" | "pattern" | "whySafe"> &
-  Pick<Finding, "securityConcern" | "bestPractices">;
+  Pick<Finding, "bestPractices">;
 
 const fixExplanations: Record<number, FixExplanation> = {
   1: {
@@ -468,29 +459,6 @@ const fixExplanations: Record<number, FixExplanation> = {
     pattern: `try (Connection conn = dataSource.getConnection()) {\n    try (PreparedStatement countStmt = conn.prepareStatement(countQuery);\n         ResultSet countRs = countStmt.executeQuery()) {\n        if (countRs.next()) {\n            totalCount = countRs.getInt(1); // Use the existing count column/read logic.\n        }\n    } // countRs and countStmt are closed automatically here.\n\n    try (PreparedStatement listStmt = conn.prepareStatement(dataQuery)) {\n        // Keep the existing pagination parameter bindings here.\n        try (ResultSet listRs = listStmt.executeQuery()) {\n            // Preserve the existing applicant JSON-building loop.\n        } // listRs.close() is called automatically here, even if processing fails.\n    } // listStmt.close() is called automatically after listRs is closed.\n} // conn.close() is called automatically after both query operations finish.`,
     whySafe:
       "The queries still run in count-then-list order on one connection. The first resources can no longer become unreachable: closure is countRs → countStmt, then listRs → listStmt, and finally conn.",
-    securityConcern: {
-      severity: "HIGH",
-      problem:
-        "The search term originates from the HTTP request and is concatenated into both SQL strings. It is therefore interpreted as part of the SQL command instead of being handled only as data.",
-      evidence: `searchQuery = " AND (lower(ud.user_name) LIKE '" + search + "%' ... )";\nString countQuery = "SELECT count(*) FROM ... " + searchQuery;\nString dataQuery = "SELECT ... " + searchQuery + " LIMIT ? OFFSET ?";`,
-      reason:
-        "LIMIT and OFFSET are parameterized, but the four search conditions are not. A caller can send a request directly, so validation or escaping in the browser cannot protect the database query.",
-      action:
-        "Build both queries from fixed SQL text. Bind the username, email, mobile number, and application-number search patterns with PreparedStatement.setString(...), followed by the existing LIMIT and OFFSET parameters in the listing query.",
-      preserve: [
-        "The same four searchable fields",
-        "Case-insensitive prefix matching",
-        "Count and listing filters",
-        "Pagination and response JSON types",
-      ],
-      verify: [
-        "Normal searches return the same records",
-        "An apostrophe does not break the query",
-        "SQL-like input is treated only as search text",
-        "Count and listing totals remain consistent",
-        "An empty search still returns the unfiltered list",
-      ],
-    },
     bestPractices: [
       {
         tip: "Own each ResultSet directly with try-with-resources.",
@@ -673,6 +641,77 @@ export const findings: Finding[] = baseFindings.map((finding) => ({
   ...finding,
   ...fixExplanations[finding.id],
 }));
+
+export type SecurityConcern = {
+  id: string;
+  severity: Severity;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  title: string;
+  category: string;
+  locations: Array<{
+    file: string;
+    method: string;
+    line: string;
+    role: string;
+  }>;
+  problem: string;
+  evidence: string;
+  flow: string[];
+  reason: string;
+  action: string;
+  preserve: string[];
+  verify: string[];
+};
+
+export const securityConcerns: SecurityConcern[] = [
+  {
+    id: "SEC-01",
+    severity: "HIGH",
+    confidence: "HIGH",
+    title: "Unparameterized applicant-search conditions",
+    category: "SQL injection",
+    locations: [
+      {
+        file: "mps/FetchMPSDetails.java",
+        method: "getApplicantListForVerification request handler",
+        line: "54–60",
+        role: "Source: reads the search term from the HTTP request and builds a SQL fragment",
+      },
+      {
+        file: "mps/MpsDAO.java",
+        method: "getApplicantListForVerification(...) ",
+        line: "80–145",
+        role: "Sink: concatenates the fragment into the count and listing queries",
+      },
+    ],
+    problem:
+      "The search term originates from the HTTP request and is concatenated into both SQL strings. It is interpreted as part of the SQL command instead of being handled only as data.",
+    evidence: `// mps/FetchMPSDetails.java:54–58\nsearchQuery = " AND (lower(ud.user_name) LIKE '" + search + "%' ... )";\n\n// mps/MpsDAO.java:88–106\nString countQuery = "SELECT count(*) FROM ... " + search;\nString dataQuery = "SELECT ... " + search + " LIMIT ? OFFSET ?";`,
+    flow: [
+      "The request handler reads sSearch from the incoming HTTP request.",
+      "It concatenates that value into searchQuery.",
+      "The DAO appends searchQuery to two SQL statements.",
+      "The database parses the resulting text as SQL.",
+    ],
+    reason:
+      "LIMIT and OFFSET are parameterized, but the four search conditions are not. A caller can send an HTTP request directly, so validation or escaping in the browser cannot protect the database query.",
+    action:
+      "Build both queries from fixed SQL text. Bind the username, email, mobile number, and application-number search patterns with PreparedStatement.setString(...), followed by the existing LIMIT and OFFSET parameters in the listing query.",
+    preserve: [
+      "The same four searchable fields",
+      "Case-insensitive prefix matching",
+      "Count and listing filters",
+      "Pagination and response JSON types",
+    ],
+    verify: [
+      "Normal searches return the same records",
+      "An apostrophe does not break the query",
+      "SQL-like input is treated only as search text",
+      "Count and listing totals remain consistent",
+      "An empty search still returns the unfiltered list",
+    ],
+  },
+];
 
 export const auditSummary = {
   auditDate: "31 August 2026",
