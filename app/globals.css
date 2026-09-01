@@ -332,6 +332,44 @@ select:focus {
   line-height: 24px;
   text-align: center;
 }
+.security-concern {
+  margin: 24px 0;
+  padding: 24px;
+  border: 1px solid #d9b8b3;
+  border-left: 4px solid var(--red);
+  background: #fff8f6;
+}
+.concern-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ead5d1;
+}
+.concern-heading h3 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+}
+.practice-list {
+  display: grid;
+  gap: 12px;
+}
+.practice-list article {
+  padding: 16px 18px;
+  border-left: 3px solid var(--green);
+  background: #faf9f4;
+}
+.practice-list strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.practice-list p {
+  margin: 0;
+}
 pre {
   overflow-x: auto;
   margin: 0;

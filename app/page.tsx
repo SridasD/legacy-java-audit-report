@@ -176,6 +176,61 @@ export default function Home() {
                 <Section title="Why this fix is safe">
                   <p>{finding.whySafe}</p>
                 </Section>
+                {finding.securityConcern && (
+                  <aside className="security-concern">
+                    <div className="concern-heading">
+                      <div>
+                        <p className="section-kicker">Separate security concern</p>
+                        <h3>Unparameterized search conditions</h3>
+                      </div>
+                      <span className={`badge ${finding.securityConcern.severity.toLowerCase()}`}>
+                        {finding.securityConcern.severity}
+                      </span>
+                    </div>
+                    <Section title="Problem">
+                      <p>{finding.securityConcern.problem}</p>
+                    </Section>
+                    <Section title="Code evidence">
+                      <pre>
+                        <code>{finding.securityConcern.evidence}</code>
+                      </pre>
+                    </Section>
+                    <Section title="Why this is a security concern">
+                      <p>{finding.securityConcern.reason}</p>
+                    </Section>
+                    <Section title="Developer action">
+                      <p>{finding.securityConcern.action}</p>
+                    </Section>
+                    <div className="two-column">
+                      <Section title="Do not change">
+                        <ul>
+                          {finding.securityConcern.preserve.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </Section>
+                      <Section title="Security verification">
+                        <ul className="checklist">
+                          {finding.securityConcern.verify.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </Section>
+                    </div>
+                  </aside>
+                )}
+                {finding.bestPractices && (
+                  <Section title="Best practices and reasons">
+                    <div className="practice-list">
+                      {finding.bestPractices.map((practice) => (
+                        <article key={practice.tip}>
+                          <strong>{practice.tip}</strong>
+                          <p>{practice.reason}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </Section>
+                )}
                 <div className="two-column">
                   <Section title="Do not change">
                     <ul>

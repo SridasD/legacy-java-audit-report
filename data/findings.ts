@@ -17,6 +17,19 @@ export type Finding = {
   fixSteps: string[];
   pattern: string;
   whySafe: string;
+  securityConcern?: {
+    severity: Severity;
+    problem: string;
+    evidence: string;
+    reason: string;
+    action: string;
+    preserve: string[];
+    verify: string[];
+  };
+  bestPractices?: Array<{
+    tip: string;
+    reason: string;
+  }>;
   preserve: string[];
   risk: string;
   verify: string[];
@@ -375,7 +388,8 @@ const baseFindings: Omit<Finding, "fixSteps" | "whySafe">[] = [
   },
 ];
 
-type FixExplanation = Pick<Finding, "action" | "fixSteps" | "pattern" | "whySafe">;
+type FixExplanation = Pick<Finding, "action" | "fixSteps" | "pattern" | "whySafe"> &
+  Pick<Finding, "securityConcern" | "bestPractices">;
 
 const fixExplanations: Record<number, FixExplanation> = {
   1: {
@@ -454,6 +468,56 @@ const fixExplanations: Record<number, FixExplanation> = {
     pattern: `try (Connection conn = dataSource.getConnection()) {\n    try (PreparedStatement countStmt = conn.prepareStatement(countQuery);\n         ResultSet countRs = countStmt.executeQuery()) {\n        if (countRs.next()) {\n            totalCount = countRs.getInt(1); // Use the existing count column/read logic.\n        }\n    } // countRs and countStmt are closed automatically here.\n\n    try (PreparedStatement listStmt = conn.prepareStatement(dataQuery)) {\n        // Keep the existing pagination parameter bindings here.\n        try (ResultSet listRs = listStmt.executeQuery()) {\n            // Preserve the existing applicant JSON-building loop.\n        } // listRs.close() is called automatically here, even if processing fails.\n    } // listStmt.close() is called automatically after listRs is closed.\n} // conn.close() is called automatically after both query operations finish.`,
     whySafe:
       "The queries still run in count-then-list order on one connection. The first resources can no longer become unreachable: closure is countRs → countStmt, then listRs → listStmt, and finally conn.",
+    securityConcern: {
+      severity: "HIGH",
+      problem:
+        "The search term originates from the HTTP request and is concatenated into both SQL strings. It is therefore interpreted as part of the SQL command instead of being handled only as data.",
+      evidence: `searchQuery = " AND (lower(ud.user_name) LIKE '" + search + "%' ... )";\nString countQuery = "SELECT count(*) FROM ... " + searchQuery;\nString dataQuery = "SELECT ... " + searchQuery + " LIMIT ? OFFSET ?";`,
+      reason:
+        "LIMIT and OFFSET are parameterized, but the four search conditions are not. A caller can send a request directly, so validation or escaping in the browser cannot protect the database query.",
+      action:
+        "Build both queries from fixed SQL text. Bind the username, email, mobile number, and application-number search patterns with PreparedStatement.setString(...), followed by the existing LIMIT and OFFSET parameters in the listing query.",
+      preserve: [
+        "The same four searchable fields",
+        "Case-insensitive prefix matching",
+        "Count and listing filters",
+        "Pagination and response JSON types",
+      ],
+      verify: [
+        "Normal searches return the same records",
+        "An apostrophe does not break the query",
+        "SQL-like input is treated only as search text",
+        "Count and listing totals remain consistent",
+        "An empty search still returns the unfiltered list",
+      ],
+    },
+    bestPractices: [
+      {
+        tip: "Own each ResultSet directly with try-with-resources.",
+        reason:
+          "Closing a PreparedStatement will normally close its current ResultSet, but relying on that indirect behavior hides ownership. It is especially unsafe here because reassigning pstmt loses access to the first statement and its ResultSet.",
+      },
+      {
+        tip: "Use different names for countStmt/countRs and listStmt/listRs.",
+        reason:
+          "Distinct names prevent accidental reassignment and make it immediately clear which statement created each ResultSet.",
+      },
+      {
+        tip: "Keep each JDBC scope as narrow as possible.",
+        reason:
+          "The count resources can close before the listing query begins, reducing the time database cursors and statement resources remain allocated.",
+      },
+      {
+        tip: "Let try-with-resources perform cleanup instead of adding manual close calls.",
+        reason:
+          "Java closes resources in reverse declaration order and still attempts the remaining closes when processing fails. This produces listRs → listStmt → conn cleanup without duplicated close logic.",
+      },
+      {
+        tip: "Preserve the original response types while correcting resource ownership.",
+        reason:
+          "The current count is a String and is returned in both total-record fields. Changing it to an int during this fix could create an unrelated client compatibility change.",
+      },
+    ],
   },
   7: {
     action:
